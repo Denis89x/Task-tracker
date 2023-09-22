@@ -31,5 +31,6 @@ public class TaskStateEntity {
     Instant createAt = Instant.now();
 
     @OneToMany
+    @JoinColumn(name = "task_state_id", referencedColumnName = "id")
     List<TaskEntity> tasks = new ArrayList<>();
 }
