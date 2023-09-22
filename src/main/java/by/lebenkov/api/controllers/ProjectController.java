@@ -2,6 +2,7 @@ package by.lebenkov.api.controllers;
 
 import by.lebenkov.api.dto.ProjectDto;
 import by.lebenkov.api.exceptions.BadRequestException;
+import by.lebenkov.api.exceptions.NotFoundException;
 import by.lebenkov.api.factories.ProjectDtoFactory;
 import by.lebenkov.store.entities.ProjectEntity;
 import by.lebenkov.store.repositories.ProjectRepository;
@@ -9,9 +10,10 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -23,17 +25,53 @@ public class ProjectController {
 
     ProjectRepository projectRepository;
 
+    public static final String FETCH_PROJECT = "/api/projects";
     public static final String CREATE_PROJECT = "/api/projects";
+    public static final String EDIT_PROJECT = "/api/projects/{project_id}";
 
     @PostMapping(CREATE_PROJECT)
     public ProjectDto createProject(@RequestParam String name) {
-        projectRepository.
-                findByName(name)
+        if (name.trim().isEmpty())
+            throw new BadRequestException("Name can`t be empty.");
+
+        projectRepository
+                .findByName(name)
                 .ifPresent(project -> {
                     throw new BadRequestException(String.format("Project \"%s\" already exists", name));
                 });
 
-        //TODO: uncomment and insert entity in method
-        return null;
+        ProjectEntity project = projectRepository.saveAndFlush(
+                ProjectEntity.builder()
+                        .name(name)
+                        .build()
+        );
+
+        return projectDtoFactory.makeProjectDto(project);
+    }
+
+    @PatchMapping(EDIT_PROJECT)
+    public ProjectDto editPatch(
+            @PathVariable("project_id") Long projectId,
+            @RequestParam String name) {
+
+        ProjectEntity project = projectRepository.
+                findById(projectId)
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                String.format("Project with \"%s\" doesn`t exists.", projectId))
+                );
+
+        projectRepository
+                .findByName(name)
+                .filter(anotherProject -> !Objects.equals(anotherProject.getId(), projectId))
+                .ifPresent(anotherProject -> {
+                    throw new BadRequestException(String.format("Project \"%s\" already exists", name));
+                });
+
+        project.setName(name);
+
+        project = projectRepository.saveAndFlush(project);
+
+        return projectDtoFactory.makeProjectDto(project);
     }
 }
