@@ -21,5 +21,5 @@ public class ProjectDto {
 
     @NonNull
     @JsonProperty("created_at")
-    Instant createAt;
+    Instant createdAt;
 }
