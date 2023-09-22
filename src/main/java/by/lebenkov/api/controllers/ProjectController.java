@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -28,6 +31,23 @@ public class ProjectController {
     public static final String FETCH_PROJECT = "/api/projects";
     public static final String CREATE_PROJECT = "/api/projects";
     public static final String EDIT_PROJECT = "/api/projects/{project_id}";
+    public static final String DELETE_PROJECT = "/api/project/{project_id}";
+
+
+    @GetMapping(FETCH_PROJECT)
+    public List<ProjectDto> fetchProject(
+            @RequestParam(value = "prefix_name", required = false) Optional<String> optionalPrefixName) {
+
+        optionalPrefixName = optionalPrefixName.filter(prefixName -> !prefixName.trim().isEmpty());
+
+        Stream<ProjectEntity> projectStream = optionalPrefixName
+                .map(projectRepository::streamAllByNameStartsWithIgnoreCase)
+                .orElseGet(projectRepository::streamAll);
+
+        return projectStream
+                .map(projectDtoFactory::makeProjectDto)
+                .collect(Collectors.toList());
+    }
 
     @PostMapping(CREATE_PROJECT)
     public ProjectDto createProject(@RequestParam String name) {
@@ -50,7 +70,7 @@ public class ProjectController {
     }
 
     @PatchMapping(EDIT_PROJECT)
-    public ProjectDto editPatch(
+    public ProjectDto editProject(
             @PathVariable("project_id") Long projectId,
             @RequestParam String name) {
 
